@@ -55,7 +55,7 @@ A low p-value (< 0.05) on either test means: **reject the model** — it's not w
 ## Usage
 
 ```bash
-pip install numpy scipy
+pip install numpy scipy matplotlib
 python backtest.py
 ```
 
@@ -100,3 +100,7 @@ regime changes — the Kupiec test alone flags this, but the combined Conditiona
 Coverage test doesn't reject it outright, since the violations aren't clustered. The
 deliberately flawed model, by contrast, is rejected overwhelmingly by every test —
 nearly 4x the expected violation rate, with a p-value indistinguishable from zero.
+
+![Backtest violations for a standard model vs a flawed model](backtest_violations.png)
+
+Each dot is one day's actual loss; the black line is the 95% VaR the model predicted for that day, and red dots are violations (loss above VaR). The standard model's violations cluster in the early high-volatility stretch and around day 360-400, when a rolling window lags behind a regime shift. The flawed model's VaR line is so low that red dots appear everywhere.

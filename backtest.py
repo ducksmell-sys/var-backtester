@@ -1,5 +1,6 @@
 """VaR backtesting engine: rolling-window violations + Kupiec / Christoffersen tests."""
 
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import chi2
 
@@ -153,6 +154,27 @@ def print_report(name, violations, confidence):
     print()
 
 
+def plot_backtest(panels, out_path="backtest_violations.png"):
+    """실제 일별 손실(점)과 VaR(선)을 겹쳐 그리고, VaR을 넘은 위반일을 빨간 점으로 표시.
+
+    panels: [(제목, var_estimates, actual_losses, violations), ...]
+    """
+    fig, axes = plt.subplots(len(panels), 1, figsize=(11, 4.2 * len(panels)), sharex=True)
+    axes = np.atleast_1d(axes)
+    for ax, (title, var_est, losses, viol) in zip(axes, panels):
+        days = np.arange(len(losses))
+        ax.scatter(days[~viol], losses[~viol], s=6, color="#4C72B0", alpha=0.6, label="Daily loss")
+        ax.scatter(days[viol], losses[viol], s=18, color="#C44E52", label=f"Violation ({viol.sum()} days)")
+        ax.plot(days, var_est, color="black", linewidth=1.5, label="95% VaR")
+        ax.set_ylabel("Loss")
+        ax.set_title(f"{title} - violation rate {viol.mean():.1%} (expected 5.0%)")
+        ax.legend(loc="upper left")
+    axes[-1].set_xlabel("Backtest day")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    print(f"[안내] 차트를 '{out_path}'에 저장했습니다.")
+
+
 if __name__ == "__main__":
     # 예시: 변동성 레짐이 몇 차례 바뀌는 3년치(750일) 가짜 수익률 데이터
     rng = np.random.default_rng(42)
@@ -167,8 +189,13 @@ if __name__ == "__main__":
     confidence = 0.95
     window = 250
 
-    _, good_violations, _ = rolling_backtest(returns, simple_parametric_var, window, confidence)
-    _, bad_violations, _ = rolling_backtest(returns, bad_var_model, window, confidence)
+    good_var, good_violations, good_losses = rolling_backtest(returns, simple_parametric_var, window, confidence)
+    bad_var, bad_violations, bad_losses = rolling_backtest(returns, bad_var_model, window, confidence)
 
     print_report("단순 모수적 VaR (정상 모델)", good_violations, confidence)
     print_report("변동성 과소평가 모델 (의도적 결함 모델)", bad_violations, confidence)
+
+    plot_backtest([
+        ("Standard parametric VaR", good_var, good_losses, good_violations),
+        ("Flawed model (volatility understated by half)", bad_var, bad_losses, bad_violations),
+    ])
